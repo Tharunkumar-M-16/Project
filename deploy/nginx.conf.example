@@ -1,0 +1,20 @@
+# Nginx reverse proxy for ReadyScore on a Hostinger VPS.
+# Put this at /etc/nginx/sites-available/readyscore, then:
+#   ln -s /etc/nginx/sites-available/readyscore /etc/nginx/sites-enabled/
+#   nginx -t && systemctl reload nginx
+# After it works over HTTP, get free HTTPS with:  certbot --nginx -d your-domain.com
+
+server {
+    listen 80;
+    server_name your-domain.com www.your-domain.com;
+
+    # Everything is served by the Node app (it serves the React build + /api).
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

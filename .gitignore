@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+*/node_modules/
+
+# env & secrets — NEVER commit these
+.env
+*/.env
+.env.local
+*/.env.local
+
+# build output
+client/dist/
+dist/
+build/
+
+# runtime / logs
+*.log
+npm-debug.log*
+.seeded
+*/.seeded
+
+# local data & tmp
+.mongodb-data/
+scratchpad/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,15 @@
+{
+  "name": "readyscore",
+  "version": "1.0.0",
+  "description": "ReadyScore — AI employability platform (MERN). A credit score for careers.",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "seed": "npm --prefix server run seed",
+    "server": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "setup:prod": "npm --prefix server install --omit=dev && npm --prefix client install && npm --prefix client run build",
+    "start": "NODE_ENV=production node server/server.js"
+  }
+}
