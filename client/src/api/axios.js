@@ -1,8 +1,12 @@
 import axios from 'axios';
 
-// baseURL '/api' is proxied to http://localhost:5000 by vite.config.js (dev),
-// and same-origin in production.
-const api = axios.create({ baseURL: '/api' });
+// In production (Vercel) we call the Railway backend directly.
+// In dev, '/api' is proxied to localhost:5000 by vite.config.js.
+const api = axios.create({
+  baseURL: import.meta.env.PROD
+    ? 'https://project-production-f121.up.railway.app/api'
+    : '/api',
+});
 
 // Attach JWT from localStorage to every request
 api.interceptors.request.use((config) => {
