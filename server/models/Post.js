@@ -13,7 +13,7 @@ const documentSchema = new mongoose.Schema(
 // A feed post a tutor publishes to all students — text + links + documents (+ optional tests).
 const postSchema = new mongoose.Schema(
   {
-    tutor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    tutor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     title: { type: String, required: true, trim: true },
     body: { type: String, default: '' },
     links: { type: [linkSchema], default: [] },

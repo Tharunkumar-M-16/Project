@@ -24,7 +24,12 @@ const round = (n) => Math.round(n);
  */
 export function computeReadyScore(profile = {}, role = null) {
   const skills = profile.skills || [];
-  const skillMap = new Map(skills.map((s) => [s.name.toLowerCase(), s.level || 0]));
+  // Case-insensitive map; on a name collision keep the HIGHEST level (don't clobber).
+  const skillMap = new Map();
+  for (const s of skills) {
+    const key = String(s.name || '').toLowerCase();
+    skillMap.set(key, Math.max(skillMap.get(key) || 0, s.level || 0));
+  }
 
   // ---- Pillar 1: Skills (40%) — coverage of the role's required skills ----
   const required = role?.requiredSkills || [];

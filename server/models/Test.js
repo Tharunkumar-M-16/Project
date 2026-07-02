@@ -39,5 +39,9 @@ const testSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+testSchema.index({ classId: 1 });
+testSchema.index({ postId: 1 });
+testSchema.index({ tutor: 1 });
+
 const Test = mongoose.model('Test', testSchema);
 export default Test;

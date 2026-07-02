@@ -2,25 +2,32 @@ import { useEffect, useState } from 'react';
 import api from '../../api/axios.js';
 import TestTaker from './TestTaker.jsx';
 import { classStatus, statusBadgeClass } from '../../utils/classStatus.js';
+import { useToast } from '../../context/ToastContext.jsx';
 
 // One enrolled class shown Udemy-style: banner, resources (docs) and lessons (tests).
-function EnrolledClass({ liveClass }) {
+function EnrolledClass({ liveClass, onProgress }) {
   const [tests, setTests] = useState([]);
   const [active, setActive] = useState(null);
+  const toast = useToast();
 
   const loadTests = () =>
     api.get(`/tests/class/${liveClass._id}`).then((r) => setTests(r.data)).catch(() => {});
-
-  useEffect(() => {
-    loadTests();
-  }, []);
+  useEffect(() => { loadTests(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const st = classStatus(liveClass);
 
+  const join = async () => {
+    try {
+      const { data } = await api.post(`/classes/${liveClass._id}/attendance`);
+      window.open(data.meetingLink || liveClass.meetingLink, '_blank', 'noopener');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not join');
+    }
+  };
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      {/* banner */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-brand-600 to-indigo-500 p-4 text-white">
+    <div className="card card-hover !p-0 overflow-hidden animate-fade-up">
+      <div className="flex items-center justify-between bg-gradient-to-r from-brand-600 to-indigo-500 p-5 text-white">
         <div>
           <p className="text-xs uppercase tracking-wide opacity-80">{liveClass.subject}</p>
           <h3 className="text-lg font-bold">{liveClass.title}</h3>
@@ -30,21 +37,19 @@ function EnrolledClass({ liveClass }) {
           </p>
         </div>
         {st.canJoin ? (
-          <a href={liveClass.meetingLink} target="_blank" rel="noreferrer"
-            className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">
+          <button onClick={join} className="btn-secondary btn-sm shrink-0">
             🎥 Join live
-          </a>
+          </button>
         ) : (
-          <span className="rounded-lg bg-white/20 px-3 py-2 text-sm font-semibold">
+          <span className="chip shrink-0 bg-white/20 text-white">
             {st.status === 'ended' ? '⏹ Live ended' : '🕒 ' + new Date(liveClass.schedule).toLocaleString()}
           </span>
         )}
       </div>
 
       <div className="grid gap-4 p-4 sm:grid-cols-2">
-        {/* Resources */}
         <div>
-          <h4 className="mb-2 text-sm font-semibold text-slate-700">📚 Resources</h4>
+          <h4 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">📚 Resources</h4>
           {(!liveClass.documents || liveClass.documents.length === 0) && (
             <p className="text-sm text-slate-400">No documents yet.</p>
           )}
@@ -52,7 +57,7 @@ function EnrolledClass({ liveClass }) {
             {liveClass.documents?.map((d) => (
               <li key={d._id || d.url}>
                 <a href={d.url} target="_blank" rel="noreferrer"
-                  className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-600">
+                  className="flex items-center gap-2 rounded-xl px-2 py-1 text-sm text-slate-700 transition hover:bg-slate-50 hover:text-brand-600 dark:text-slate-300 dark:hover:bg-slate-800">
                   📄 {d.title}
                 </a>
               </li>
@@ -60,30 +65,29 @@ function EnrolledClass({ liveClass }) {
           </ul>
         </div>
 
-        {/* Tests / assignments */}
         <div>
-          <h4 className="mb-2 text-sm font-semibold text-slate-700">📝 Tests</h4>
+          <h4 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">📝 Tests</h4>
           {tests.length === 0 && <p className="text-sm text-slate-400">No tests assigned.</p>}
           <div className="space-y-2">
             {tests.map((t) => (
-              <div key={t._id} className="rounded-lg bg-slate-50 p-3">
+              <div key={t._id} className="surface rounded-lg p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-800">{t.title}</p>
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{t.title}</p>
                     <p className="text-xs text-slate-500">{t.questions.length} questions</p>
                   </div>
                   {t.mySubmission ? (
-                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
+                    <span className="chip bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
                       {t.mySubmission.percent}% ✓
                     </span>
                   ) : (
-                    <button onClick={() => setActive(active === t._id ? null : t._id)} className="btn-primary text-sm">
+                    <button onClick={() => setActive(active === t._id ? null : t._id)} className="btn-primary btn-sm">
                       {active === t._id ? 'Close' : 'Take test'}
                     </button>
                   )}
                 </div>
                 {active === t._id && !t.mySubmission && (
-                  <TestTaker test={t} onDone={() => { loadTests(); setActive(null); }} />
+                  <TestTaker test={t} onDone={() => { loadTests(); setActive(null); onProgress?.(); }} />
                 )}
               </div>
             ))}
@@ -94,59 +98,65 @@ function EnrolledClass({ liveClass }) {
   );
 }
 
-export default function StudentClasses() {
+export default function StudentClasses({ compact = false }) {
   const [mine, setMine] = useState([]);
   const [all, setAll] = useState([]);
   const [loading, setLoading] = useState(true);
+  const toast = useToast();
 
   const load = () =>
     Promise.all([
       api.get('/classes', { params: { scope: 'mine' } }).then((r) => setMine(r.data)),
-      api.get('/classes').then((r) => setAll(r.data)),
+      compact ? Promise.resolve() : api.get('/classes').then((r) => setAll(r.data)),
     ]);
 
   useEffect(() => {
     load().catch(() => {}).finally(() => setLoading(false));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const enroll = async (id) => {
-    await api.post(`/classes/${id}/enroll`);
-    await load();
+    try {
+      await api.post(`/classes/${id}/enroll`);
+      toast.success('Enrolled!');
+      await load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not enroll');
+    }
   };
 
   const myIds = new Set(mine.map((c) => c._id));
   const browsable = all.filter((c) => !myIds.has(c._id));
 
-  if (loading) return <div className="card text-slate-400">Loading your classes…</div>;
+  if (loading) return <div className="card text-center text-slate-400">Loading your classes…</div>;
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">My classes</h2>
+        <h2 className="section-title mb-3">My classes</h2>
         {mine.length === 0 && (
-          <div className="card text-sm text-slate-400">You're not enrolled yet — enroll in a class below.</div>
+          <div className="card py-10 text-center text-sm text-slate-400">You're not enrolled yet{compact ? '.' : ' — enroll in a class below.'}</div>
         )}
         <div className="space-y-4">
-          {mine.map((c) => <EnrolledClass key={c._id} liveClass={c} />)}
+          {mine.map((c) => <EnrolledClass key={c._id} liveClass={c} onProgress={load} />)}
         </div>
       </div>
 
-      {browsable.length > 0 && (
+      {!compact && browsable.length > 0 && (
         <div>
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">Browse classes</h2>
+          <h2 className="section-title mb-3">Browse classes</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {browsable.map((c) => {
               const st = classStatus(c);
               return (
-                <div key={c._id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+                <div key={c._id} className="card card-hover !p-4 flex items-center justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-slate-900">{c.title}</p>
+                    <p className="font-semibold text-slate-900 dark:text-slate-100">{c.title}</p>
                     <p className="text-sm text-slate-500">{c.subject} · {c.tutor?.name}</p>
-                    <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadgeClass(st.status)}`}>
+                    <span className={`chip mt-1 ${statusBadgeClass(st.status)}`}>
                       {st.label}
                     </span>
                   </div>
-                  <button onClick={() => enroll(c._id)} className="btn-primary text-sm">Enroll</button>
+                  <button onClick={() => enroll(c._id)} className="btn-primary btn-sm shrink-0">Enroll</button>
                 </div>
               );
             })}

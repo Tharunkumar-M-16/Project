@@ -1,7 +1,7 @@
 {
-  "name": "readyscore",
+  "name": "5rings-class",
   "version": "1.0.0",
-  "description": "ReadyScore — AI employability platform (MERN). A credit score for careers.",
+  "description": "5Rings Class — smart live online classroom (MERN).",
   "private": true,
   "scripts": {
     "install:all": "npm --prefix server install && npm --prefix client install",

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from '../../api/axios.js';
 import CreateTestForm from './CreateTestForm.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
 
 // One post the tutor owns: shows content + attached tests, with add-test / delete controls.
 function PostCard({ post, onChanged }) {
@@ -13,27 +14,27 @@ function PostCard({ post, onChanged }) {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 p-4">
-      <div className="flex items-start justify-between">
+    <div className="card card-hover">
+      <div className="flex items-start justify-between gap-2">
         <div>
-          <h3 className="font-semibold text-slate-900">{post.title}</h3>
+          <h3 className="section-title">{post.title}</h3>
           <p className="text-xs text-slate-400">{new Date(post.createdAt).toLocaleString()}</p>
         </div>
-        <button onClick={remove} className="text-sm text-rose-500">Delete</button>
+        <button onClick={remove} className="btn-danger btn-sm">Delete</button>
       </div>
-      {post.body && <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">{post.body}</p>}
+      {post.body && <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-300">{post.body}</p>}
 
       {post.documents?.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           {post.documents.map((d) => (
-            <a key={d._id} href={d.url} target="_blank" rel="noreferrer" className="rounded-lg bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:text-brand-600">📄 {d.title}</a>
+            <a key={d._id} href={d.url} target="_blank" rel="noreferrer" className="chip bg-slate-100 text-slate-700 hover:text-brand-600 dark:bg-slate-800 dark:text-slate-300">📄 {d.title}</a>
           ))}
         </div>
       )}
       {post.links?.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
           {post.links.map((l) => (
-            <a key={l._id} href={l.url} target="_blank" rel="noreferrer" className="rounded-lg bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:underline">🔗 {l.label || l.url}</a>
+            <a key={l._id} href={l.url} target="_blank" rel="noreferrer" className="chip bg-indigo-50 text-indigo-700 hover:underline dark:bg-indigo-500/20 dark:text-indigo-300">🔗 {l.label || l.url}</a>
           ))}
         </div>
       )}
@@ -41,16 +42,16 @@ function PostCard({ post, onChanged }) {
       {post.tests?.length > 0 && (
         <div className="mt-3 space-y-1">
           {post.tests.map((t) => (
-            <div key={t._id} className="flex justify-between rounded bg-slate-50 px-2 py-1 text-xs">
-              <span className="text-slate-600">📝 {t.title}</span>
+            <div key={t._id} className="flex justify-between rounded-lg surface px-3 py-1.5 text-xs">
+              <span className="text-slate-600 dark:text-slate-300">📝 {t.title}</span>
               <span className="text-slate-400">{t.questions.length} Qs · {t.submissions?.length || 0} subs</span>
             </div>
           ))}
         </div>
       )}
 
-      <div className="mt-3">
-        <button onClick={() => setShowTest((v) => !v)} className="text-sm font-medium text-brand-600">
+      <div className="mt-4">
+        <button onClick={() => setShowTest((v) => !v)} className="btn-ghost btn-sm">
           {showTest ? 'Cancel' : '+ Attach a test'}
         </button>
         {showTest && (
@@ -66,15 +67,41 @@ function PostCard({ post, onChanged }) {
 const emptyForm = { title: '', body: '', links: [{ label: '', url: '' }], documents: [{ title: '', url: '' }] };
 
 export default function PostManager() {
+  const toast = useToast();
   const [posts, setPosts] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [msg, setMsg] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
 
   const load = () => api.get('/posts', { params: { scope: 'mine' } }).then((r) => setPosts(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const setLink = (i, k, v) => setForm({ ...form, links: form.links.map((l, idx) => idx === i ? { ...l, [k]: v } : l) });
   const setDoc = (i, k, v) => setForm({ ...form, documents: form.documents.map((d, idx) => idx === i ? { ...d, [k]: v } : d) });
+
+  // Upload files and append them as documents on the post being composed.
+  const onFiles = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploading(true);
+    try {
+      const uploaded = [];
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append('file', file);
+        const { data } = await api.post('/uploads', fd);
+        uploaded.push({ title: data.title, url: data.url });
+      }
+      setForm((f) => ({ ...f, documents: [...f.documents.filter((d) => d.title || d.url), ...uploaded] }));
+      toast.success(`Uploaded ${uploaded.length} file(s)`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -97,9 +124,9 @@ export default function PostManager() {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={submit} className="card space-y-3">
-        <h2 className="text-lg font-semibold text-slate-900">Create a post</h2>
-        {msg && <div className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{msg}</div>}
+      <form onSubmit={submit} className="card space-y-4">
+        <h2 className="section-title">Create a post</h2>
+        {msg && <div className="animate-fade-in rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">{msg}</div>}
         <input className="input" placeholder="Post title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
         <textarea className="input" rows="3" placeholder="Write something for your students…" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
 
@@ -111,7 +138,13 @@ export default function PostManager() {
               <input className="input flex-1" placeholder="URL" value={d.url} onChange={(e) => setDoc(i, 'url', e.target.value)} />
             </div>
           ))}
-          <button type="button" onClick={() => setForm({ ...form, documents: [...form.documents, { title: '', url: '' }] })} className="text-sm text-brand-600">+ Add document</button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => setForm({ ...form, documents: [...form.documents, { title: '', url: '' }] })} className="btn-ghost btn-sm">+ Add link-doc</button>
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="btn-secondary btn-sm">
+              {uploading ? 'Uploading…' : '📎 Upload files'}
+            </button>
+            <input ref={fileRef} type="file" multiple hidden onChange={onFiles} />
+          </div>
         </div>
 
         <div>
@@ -122,7 +155,7 @@ export default function PostManager() {
               <input className="input flex-1" placeholder="https://…" value={l.url} onChange={(e) => setLink(i, 'url', e.target.value)} />
             </div>
           ))}
-          <button type="button" onClick={() => setForm({ ...form, links: [...form.links, { label: '', url: '' }] })} className="text-sm text-brand-600">+ Add link</button>
+          <button type="button" onClick={() => setForm({ ...form, links: [...form.links, { label: '', url: '' }] })} className="btn-ghost btn-sm">+ Add link</button>
         </div>
 
         <button className="btn-primary">Publish post</button>
@@ -130,8 +163,8 @@ export default function PostManager() {
       </form>
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">My posts</h2>
-        {posts.length === 0 && <p className="text-sm text-slate-400">No posts yet.</p>}
+        <h2 className="section-title mb-3">My posts</h2>
+        {posts.length === 0 && <p className="card !p-8 text-center text-sm text-slate-400 dark:text-slate-500">No posts yet.</p>}
         <div className="space-y-3">
           {posts.map((p) => <PostCard key={p._id} post={p} onChanged={load} />)}
         </div>

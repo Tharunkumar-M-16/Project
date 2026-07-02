@@ -5,6 +5,7 @@ import {
   getClass,
   deleteClass,
   enrollClass,
+  markAttendance,
   addDocument,
   updateDocument,
   deleteDocument,
@@ -17,6 +18,7 @@ router.post('/', protect, authorize('tutor', 'admin'), createClass);
 router.get('/:id', protect, getClass);
 router.delete('/:id', protect, authorize('tutor', 'admin'), deleteClass);
 router.post('/:id/enroll', protect, authorize('student'), enrollClass);
+router.post('/:id/attendance', protect, authorize('student'), markAttendance);
 router.post('/:id/documents', protect, authorize('tutor', 'admin'), addDocument);
 router.put('/:id/documents/:docId', protect, authorize('tutor', 'admin'), updateDocument);
 router.delete('/:id/documents/:docId', protect, authorize('tutor', 'admin'), deleteDocument);

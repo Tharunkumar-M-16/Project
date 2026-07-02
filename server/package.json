@@ -1,7 +1,7 @@
 {
-  "name": "readyscore-server",
+  "name": "5rings-class-server",
   "version": "1.0.0",
-  "description": "ReadyScore backend - AI employability platform (MERN)",
+  "description": "5Rings Class backend — smart live online classroom (MERN)",
   "type": "module",
   "main": "server.js",
   "scripts": {
@@ -14,8 +14,14 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-async-errors": "^3.1.1",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.5.0"
+    "mongoose": "^8.5.0",
+    "multer": "^2.2.0",
+    "openai": "^6.45.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"

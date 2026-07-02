@@ -22,7 +22,6 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
-  // Login by username (ID) + password
   const login = async (username, password) => {
     const { data } = await api.post('/auth/login', { username, password });
     localStorage.setItem('token', data.token);
@@ -41,8 +40,15 @@ export function AuthProvider({ children }) {
     return res.data.user;
   };
 
+  // Self-service password change (also clears the "must change" flag).
+  const changePassword = async (currentPassword, newPassword) => {
+    const { data } = await api.put('/auth/password', { currentPassword, newPassword });
+    setUser(data.user);
+    return data.user;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, changePassword }}>
       {children}
     </AuthContext.Provider>
   );

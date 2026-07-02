@@ -1,54 +1,80 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import api from '../api/axios.js';
+import useEventSource from '../hooks/useEventSource.js';
+import { useToast } from '../context/ToastContext.jsx';
 
-// Student notifications feed — updates when tutors add/edit documents or tests.
+// Real-time notifications feed (SSE), with a slow poll as a safety net.
 export default function Notifications() {
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(true);
+  const toast = useToast();
 
-  const load = () =>
-    api.get('/notifications').then((r) => {
-      setItems(r.data.notifications);
-      setUnread(r.data.unread);
-    }).catch(() => {});
+  const load = useCallback(
+    () =>
+      api
+        .get('/notifications')
+        .then((r) => {
+          setItems(r.data.notifications);
+          setUnread(r.data.unread);
+        })
+        .catch(() => {}),
+    []
+  );
 
   useEffect(() => {
     load();
-    const id = setInterval(load, 15000); // light polling
+    const id = setInterval(load, 60000); // fallback poll (SSE is the primary path)
     return () => clearInterval(id);
-  }, []);
+  }, [load]);
+
+  // Live: reload + toast the moment the server pushes a notification.
+  useEventSource((_name, data) => {
+    if (data?.message) toast.info(data.message);
+    load();
+  });
 
   const markAll = async () => {
     await api.put('/notifications/read-all');
     load();
   };
+  const markOne = async (id) => {
+    await api.put(`/notifications/${id}/read`);
+    load();
+  };
 
-  const icon = { document: '📄', test: '📝' };
+  const icon = { document: '📄', test: '📝', class: '🎥', account: '🔐', achievement: '🏆' };
 
   return (
     <div className="card">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+        <h2 className="section-title flex items-center gap-2">
           🔔 Notifications
           {unread > 0 && (
-            <span className="rounded-full bg-rose-500 px-2 py-0.5 text-xs font-semibold text-white">{unread}</span>
+            <span className="chip bg-rose-500 text-xs font-semibold text-white">{unread}</span>
           )}
         </h2>
         <div className="flex items-center gap-2">
           {unread > 0 && (
-            <button onClick={markAll} className="text-sm font-medium text-brand-600">Mark all read</button>
+            <button onClick={markAll} className="btn-ghost btn-sm">Mark all read</button>
           )}
-          <button onClick={() => setOpen((v) => !v)} className="text-sm text-slate-400">{open ? 'Hide' : 'Show'}</button>
+          <button onClick={() => setOpen((v) => !v)} className="btn-ghost btn-sm">{open ? 'Hide' : 'Show'}</button>
         </div>
       </div>
 
       {open && (
         <div className="mt-3 space-y-2">
-          {items.length === 0 && <p className="text-sm text-slate-400">No notifications yet.</p>}
+          {items.length === 0 && <p className="py-8 text-center text-sm text-slate-400">No notifications yet.</p>}
           {items.map((n) => (
-            <div key={n._id}
-              className={`flex items-start gap-2 rounded-lg px-3 py-2 text-sm ${n.read ? 'bg-slate-50 text-slate-500' : 'bg-brand-50 text-slate-800'}`}>
+            <div
+              key={n._id}
+              onClick={() => !n.read && markOne(n._id)}
+              className={`flex cursor-pointer items-start gap-2 rounded-xl px-3 py-2 text-sm transition ${
+                n.read
+                  ? 'surface text-slate-500'
+                  : 'bg-brand-50 text-slate-800 dark:bg-brand-500/10 dark:text-slate-100'
+              }`}
+            >
               <span>{icon[n.type] || 'ℹ️'}</span>
               <div className="flex-1">
                 <p>{n.message}</p>
