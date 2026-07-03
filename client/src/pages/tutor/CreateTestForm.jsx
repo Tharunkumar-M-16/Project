@@ -3,7 +3,14 @@ import api from '../../api/axios.js';
 import { useToast } from '../../context/ToastContext.jsx';
 
 const blankQ = () => ({ text: '', options: ['', '', '', ''], correctIndex: 0 });
-const toLocal = (d) => (d ? new Date(d).toISOString().slice(0, 16) : '');
+// Stored instant -> local wall-clock for a <input type="datetime-local">.
+const toLocal = (d) => {
+  if (!d) return '';
+  const dt = new Date(d);
+  return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
+// datetime-local value (local wall-clock, no tz) -> absolute ISO instant.
+const toInstant = (v) => (v ? new Date(v).toISOString() : undefined);
 
 // Build OR edit an auto-graded MCQ test attached to a class OR a post.
 // Pass `test` to edit (PUT), omit to create (POST).
@@ -61,9 +68,9 @@ export default function CreateTestForm({ classId, postId, test = null, onCreated
     setBusy(true);
     try {
       if (editing) {
-        await api.put(`/tests/${test._id}`, { title, skill, dueDate: dueDate || undefined, questions });
+        await api.put(`/tests/${test._id}`, { title, skill, dueDate: toInstant(dueDate), questions });
       } else {
-        await api.post('/tests', { title, classId, postId, skill, dueDate: dueDate || undefined, questions });
+        await api.post('/tests', { title, classId, postId, skill, dueDate: toInstant(dueDate), questions });
       }
       toast.success(editing ? 'Test updated' : 'Test assigned');
       onCreated?.();
@@ -104,8 +111,7 @@ export default function CreateTestForm({ classId, postId, test = null, onCreated
       )}
 
       <div className="grid gap-2 sm:grid-cols-3">
-        <input className="input" placeholder="Test title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-        <input className="input" placeholder="Verifies skill (e.g. React)" value={skill} onChange={(e) => setSkill(e.target.value)} />
+        <input className="input sm:col-span-2" placeholder="Test title" value={title} onChange={(e) => setTitle(e.target.value)} required />
         <input className="input" type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
       </div>
 

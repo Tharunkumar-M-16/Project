@@ -49,11 +49,13 @@ export default function TestTaker({ test, onDone }) {
         <p className="text-4xl font-bold text-brand-600 dark:text-brand-400">{result.percent}%</p>
         <p className="text-sm text-slate-600 dark:text-slate-300">{result.score} / {result.total} correct</p>
 
-        {result.skillUpdated && (
-          <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-            ✓ Verified <b>{result.skillUpdated.skill}</b> at level {result.skillUpdated.level}!
-          </p>
-        )}
+        <p className={`mt-2 rounded-xl px-3 py-2 text-sm ${
+          result.percent >= 60
+            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+            : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'
+        }`}>
+          {result.percent >= 80 ? '🎉 Excellent work!' : result.percent >= 60 ? '👍 Nicely done!' : 'Keep practising — review and try the next one.'}
+        </p>
 
         {feedback ? (
           <div className="surface mt-3 whitespace-pre-wrap rounded-xl px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200">{feedback}</div>

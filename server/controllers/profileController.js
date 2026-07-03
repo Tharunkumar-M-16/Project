@@ -12,23 +12,35 @@ const sanitize = (user) => ({
   studentProfile: user.studentProfile,
 });
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
-const yesterdayStr = () => {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
+const isYmd = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+const serverDay = () => new Date().toISOString().slice(0, 10);
+// Shift a YYYY-MM-DD by whole days (UTC math on a date-only string is exact).
+const shiftDay = (ymd, days) => {
+  const d = new Date(ymd + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
+};
+const prevDay = (ymd) => shiftDay(ymd, -1);
+// Resolve the student's local calendar day. The client sends its own date so
+// "once per day" tracks the student's local midnight, not the server's UTC one.
+// Any real timezone is within ±1 day of UTC; reject anything outside that so a
+// client can't backfill or race the streak far into the future.
+const resolveToday = (clientDate) => {
+  const server = serverDay();
+  if (!isYmd(clientDate)) return server;
+  const ok = [prevDay(server), server, shiftDay(server, 1)];
+  return ok.includes(clientDate) ? clientDate : server;
 };
 
 // PUT /api/profile — a user updates their own profile details
 export const updateProfile = async (req, res) => {
   const user = req.user;
-  const { name, avatar, targetRole, phone, college, degree } = req.body;
+  const { name, avatar, phone, college, degree } = req.body;
   if (name) user.name = String(name).trim();
   if (avatar !== undefined) user.avatar = avatar;
   if (phone !== undefined) user.phone = String(phone).trim();
   if (college !== undefined) user.college = String(college).trim();
   if (degree !== undefined) user.degree = String(degree).trim();
-  if (targetRole !== undefined) user.studentProfile.targetRole = targetRole;
   await user.save();
   res.json({ user: sanitize(user) });
 };
@@ -36,46 +48,14 @@ export const updateProfile = async (req, res) => {
 // POST /api/profile/attendance — student marks today's attendance (once per day)
 export const markDailyAttendance = async (req, res) => {
   const p = req.user.studentProfile;
-  const today = todayStr();
+  const today = resolveToday(req.body?.date);
   if (p.lastAttendance === today) {
     return res.json({ alreadyMarked: true, streak: p.streak, activeDays: p.activeDays, attendanceDates: p.attendanceDates });
   }
-  p.streak = p.lastAttendance === yesterdayStr() ? (p.streak || 0) + 1 : 1;
+  p.streak = p.lastAttendance === prevDay(today) ? (p.streak || 0) + 1 : 1;
   p.lastAttendance = today;
   p.activeDays = (p.activeDays || 0) + 1;
   p.attendanceDates = [...(p.attendanceDates || []), today].slice(-90); // keep last 90 days
   await req.user.save();
   res.json({ alreadyMarked: false, streak: p.streak, activeDays: p.activeDays, attendanceDates: p.attendanceDates });
-};
-
-// PUT /api/profile/skills — replace the student's self-declared skill list.
-// Students CANNOT mark a skill "verified" (earned only via a skill-tagged test);
-// previously-verified skills keep their verified status and floor level.
-export const updateSkills = async (req, res) => {
-  const user = req.user;
-  const { skills } = req.body;
-  if (!Array.isArray(skills)) return res.status(400).json({ message: 'skills must be an array' });
-  const prevVerified = new Map(
-    (user.studentProfile.skills || []).filter((s) => s.verified).map((s) => [s.name.toLowerCase(), s])
-  );
-  user.studentProfile.skills = skills
-    .filter((s) => s?.name)
-    .map((s) => {
-      const name = String(s.name).trim();
-      const earned = prevVerified.get(name.toLowerCase());
-      const level = Math.max(0, Math.min(100, Number(s.level) || 0));
-      return earned ? { name, level: Math.max(level, earned.level), verified: true } : { name, level, verified: false };
-    });
-  await user.save();
-  res.json({ studentProfile: user.studentProfile });
-};
-
-// PUT /api/profile/metrics — a student self-reports ONLY portfolio projects.
-export const updateMetrics = async (req, res) => {
-  const user = req.user;
-  if (req.body.projectsCompleted !== undefined) {
-    user.studentProfile.projectsCompleted = Math.max(0, Number(req.body.projectsCompleted) || 0);
-  }
-  await user.save();
-  res.json({ studentProfile: user.studentProfile });
 };

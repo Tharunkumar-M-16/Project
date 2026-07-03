@@ -1,7 +1,6 @@
 import Test from '../models/Test.js';
 import LiveClass from '../models/Class.js';
 import Post from '../models/Post.js';
-import User from '../models/User.js';
 import { notifyClassStudents, notifyAllStudents } from '../services/notify.js';
 
 // Strip correct answers before sending a test to a student.
@@ -90,18 +89,30 @@ export const updateTest = async (req, res) => {
   res.json(test);
 };
 
-// GET /api/tests/class/:classId — tests for a class (student view hides answers)
+const isStaff = (user) => user.role === 'mentor' || user.role === 'admin';
+
+// GET /api/tests/class/:classId — tests for a class.
+// Raw questions (with correct answers) go ONLY to the owning tutor or staff;
+// everyone else — students AND other tutors — gets the answer-stripped view.
 export const listTestsForClass = async (req, res) => {
-  const tests = await Test.find({ classId: req.params.classId }).sort('-createdAt');
-  if (req.user.role === 'student') return res.json(tests.map((t) => forStudent(t, req.user._id)));
-  res.json(tests);
+  const [tests, cls] = await Promise.all([
+    Test.find({ classId: req.params.classId }).sort('-createdAt'),
+    LiveClass.findById(req.params.classId).select('tutor'),
+  ]);
+  const owner = cls && cls.tutor.equals(req.user._id);
+  if (owner || isStaff(req.user)) return res.json(tests);
+  res.json(tests.map((t) => forStudent(t, req.user._id)));
 };
 
-// GET /api/tests/post/:postId — tests attached to a post (student view hides answers)
+// GET /api/tests/post/:postId — tests attached to a post (same answer-hiding rule).
 export const listTestsForPost = async (req, res) => {
-  const tests = await Test.find({ postId: req.params.postId }).sort('-createdAt');
-  if (req.user.role === 'student') return res.json(tests.map((t) => forStudent(t, req.user._id)));
-  res.json(tests);
+  const [tests, post] = await Promise.all([
+    Test.find({ postId: req.params.postId }).sort('-createdAt'),
+    Post.findById(req.params.postId).select('tutor'),
+  ]);
+  const owner = post && post.tutor.equals(req.user._id);
+  if (owner || isStaff(req.user)) return res.json(tests);
+  res.json(tests.map((t) => forStudent(t, req.user._id)));
 };
 
 // POST /api/tests/:id/submit — student submits answers; auto-graded here
@@ -111,6 +122,15 @@ export const submitTest = async (req, res) => {
 
   const test = await Test.findById(req.params.id);
   if (!test) return res.status(404).json({ message: 'Test not found' });
+
+  // Authorization: a class-linked test may only be taken by an enrolled student.
+  // (Post-linked tests are part of the open feed and stay available to any student.)
+  if (test.classId) {
+    const liveClass = await LiveClass.findById(test.classId).select('students');
+    if (!liveClass || !liveClass.students.some((s) => s.equals(req.user._id))) {
+      return res.status(403).json({ message: 'Enroll in this class before taking its test' });
+    }
+  }
 
   // Auto-grade
   const total = test.questions.length;
@@ -129,26 +149,7 @@ export const submitTest = async (req, res) => {
   );
   if (!updated) return res.status(400).json({ message: 'You already submitted this test' });
 
-  // Skill verification: a good score on a skill-tagged test verifies that skill.
-  let skillUpdated = null;
-  if (test.skill) {
-    const user = await User.findById(req.user._id);
-    const skills = user.studentProfile.skills || [];
-    const name = test.skill.trim();
-    const idx = skills.findIndex((s) => s.name.toLowerCase() === name.toLowerCase());
-    if (idx >= 0) {
-      skills[idx].level = Math.max(skills[idx].level, percent);
-      skills[idx].verified = true;
-    } else {
-      skills.push({ name, level: percent, verified: true });
-    }
-    user.studentProfile.skills = skills;
-    const final = skills.find((s) => s.name.toLowerCase() === name.toLowerCase());
-    skillUpdated = { skill: name, level: final.level, verified: true };
-    await user.save();
-  }
-
-  res.json({ score, total, percent, skillUpdated });
+  res.json({ score, total, percent });
 };
 
 // GET /api/tests/:id/submissions — the test author (or a mentor/admin) views submissions

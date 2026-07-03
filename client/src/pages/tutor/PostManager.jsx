@@ -1,16 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../../api/axios.js';
 import CreateTestForm from './CreateTestForm.jsx';
+import Modal from '../../components/Modal.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 
 // One post the tutor owns: shows content + attached tests, with add-test / delete controls.
 function PostCard({ post, onChanged }) {
+  const toast = useToast();
   const [showTest, setShowTest] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const remove = async () => {
-    if (!confirm(`Delete post "${post.title}"? Its tests are removed too.`)) return;
-    await api.delete(`/posts/${post._id}`);
-    onChanged();
+    setDeleting(true);
+    try {
+      await api.delete(`/posts/${post._id}`);
+      toast.success('Post deleted');
+      onChanged();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not delete');
+    } finally {
+      setDeleting(false);
+      setConfirming(false);
+    }
   };
 
   return (
@@ -20,8 +32,18 @@ function PostCard({ post, onChanged }) {
           <h3 className="section-title">{post.title}</h3>
           <p className="text-xs text-slate-400">{new Date(post.createdAt).toLocaleString()}</p>
         </div>
-        <button onClick={remove} className="btn-danger btn-sm">Delete</button>
+        <button onClick={() => setConfirming(true)} className="btn-danger btn-sm">Delete</button>
       </div>
+
+      <Modal open={confirming} onClose={() => setConfirming(false)} title="Delete post">
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          Delete <b>{post.title}</b>? Its attached tests are removed too. This cannot be undone.
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button className="btn-secondary" onClick={() => setConfirming(false)}>Cancel</button>
+          <button className="btn-danger" onClick={remove} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete'}</button>
+        </div>
+      </Modal>
       {post.body && <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-300">{post.body}</p>}
 
       {post.documents?.length > 0 && (
@@ -70,7 +92,7 @@ export default function PostManager() {
   const toast = useToast();
   const [posts, setPosts] = useState([]);
   const [form, setForm] = useState(emptyForm);
-  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
 
@@ -105,7 +127,7 @@ export default function PostManager() {
 
   const submit = async (e) => {
     e.preventDefault();
-    setMsg('');
+    setBusy(true);
     try {
       await api.post('/posts', {
         title: form.title,
@@ -113,12 +135,13 @@ export default function PostManager() {
         links: form.links.filter((l) => l.url),
         documents: form.documents.filter((d) => d.title && d.url),
       });
-      setMsg('Post published to all students!');
+      toast.success('Post published to all students!');
       setForm(emptyForm);
       load();
-      setTimeout(() => setMsg(''), 3000);
     } catch (err) {
-      setMsg(err.response?.data?.message || 'Could not publish');
+      toast.error(err.response?.data?.message || 'Could not publish');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -126,7 +149,6 @@ export default function PostManager() {
     <div className="space-y-6">
       <form onSubmit={submit} className="card space-y-4">
         <h2 className="section-title">Create a post</h2>
-        {msg && <div className="animate-fade-in rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">{msg}</div>}
         <input className="input" placeholder="Post title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
         <textarea className="input" rows="3" placeholder="Write something for your students…" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
 
@@ -158,7 +180,7 @@ export default function PostManager() {
           <button type="button" onClick={() => setForm({ ...form, links: [...form.links, { label: '', url: '' }] })} className="btn-ghost btn-sm">+ Add link</button>
         </div>
 
-        <button className="btn-primary">Publish post</button>
+        <button className="btn-primary" disabled={busy}>{busy ? 'Publishing…' : 'Publish post'}</button>
         <p className="text-xs text-slate-400">Tip: after publishing, use “+ Attach a test” on the post to add an auto-graded quiz.</p>
       </form>
 

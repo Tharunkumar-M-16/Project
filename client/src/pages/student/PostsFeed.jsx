@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios.js';
 import TestTaker from './TestTaker.jsx';
+import { safeUrl } from '../../utils/url.js';
 
 function PostItem({ post, onTestDone }) {
   const [active, setActive] = useState(null);
@@ -24,8 +25,8 @@ function PostItem({ post, onTestDone }) {
         <div className="mt-3">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Documents</p>
           <div className="flex flex-wrap gap-2">
-            {post.documents.map((d) => (
-              <a key={d._id} href={d.url} target="_blank" rel="noreferrer" className="chip bg-slate-100 text-slate-700 transition hover:text-brand-600 dark:bg-slate-800 dark:text-slate-200">📄 {d.title}</a>
+            {post.documents.filter((d) => safeUrl(d.url)).map((d) => (
+              <a key={d._id} href={safeUrl(d.url)} target="_blank" rel="noreferrer" className="chip bg-slate-100 text-slate-700 transition hover:text-brand-600 dark:bg-slate-800 dark:text-slate-200">📄 {d.title}</a>
             ))}
           </div>
         </div>
@@ -35,8 +36,8 @@ function PostItem({ post, onTestDone }) {
         <div className="mt-3">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Links</p>
           <div className="flex flex-wrap gap-2">
-            {post.links.map((l) => (
-              <a key={l._id} href={l.url} target="_blank" rel="noreferrer" className="chip bg-indigo-50 text-indigo-700 transition hover:underline dark:bg-indigo-500/20 dark:text-indigo-300">🔗 {l.label || l.url}</a>
+            {post.links.filter((l) => safeUrl(l.url)).map((l) => (
+              <a key={l._id} href={safeUrl(l.url)} target="_blank" rel="noreferrer" className="chip bg-indigo-50 text-indigo-700 transition hover:underline dark:bg-indigo-500/20 dark:text-indigo-300">🔗 {l.label || l.url}</a>
             ))}
           </div>
         </div>

@@ -38,13 +38,28 @@ function BarChart({ title, data, color = 'bg-brand-500' }) {
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [analytics, setAnalytics] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/admin/stats').then((r) => setStats(r.data)).catch(() => {});
+    api.get('/admin/stats').then((r) => setStats(r.data)).catch(() => setError('Could not load analytics. Please refresh.'));
     api.get('/admin/analytics').then((r) => setAnalytics(r.data)).catch(() => {});
   }, []);
 
-  if (!stats) return <p className="text-slate-400">Loading analytics…</p>;
+  if (error && !stats) {
+    return (
+      <div className="card text-center">
+        <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
+        <button onClick={() => window.location.reload()} className="btn-secondary btn-sm mt-3">Retry</button>
+      </div>
+    );
+  }
+  if (!stats) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton h-28 rounded-2xl" />)}
+      </div>
+    );
+  }
   const { counts } = stats;
 
   return (

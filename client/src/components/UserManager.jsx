@@ -37,15 +37,22 @@ export default function UserManager({ readOnly = false }) {
     return api.get('/users', { params }).then((r) => setData(r.data)).catch(() => {});
   }, [page, q, roleFilter]);
 
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => {
-    if (!readOnly) api.get('/users/tutors').then((r) => setTutors(r.data)).catch(() => {});
+  // The assign-tutor dropdowns read from this list, so keep it fresh — not just
+  // on mount, but after a new tutor is created (otherwise it stays empty/stale
+  // until a full page reload).
+  const loadTutors = useCallback(() => {
+    if (readOnly) return undefined;
+    return api.get('/users/tutors').then((r) => setTutors(r.data)).catch(() => {});
   }, [readOnly]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadTutors(); }, [loadTutors]);
 
   const update = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const createUser = async (e) => {
     e.preventDefault();
+    const createdRole = form.role;
     setBusy(true);
     try {
       await api.post('/users', form);
@@ -53,6 +60,7 @@ export default function UserManager({ readOnly = false }) {
       setForm({ name: '', username: '', password: '', role: 'student', assignedTutor: '' });
       setPage(1);
       load();
+      if (createdRole === 'tutor') loadTutors(); // new tutor must appear in the assign dropdowns
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not create user');
     } finally {

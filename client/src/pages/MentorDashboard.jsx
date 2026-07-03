@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios.js';
 import UserManager from '../components/UserManager.jsx';
+import ClassAttendanceModal from '../components/ClassAttendanceModal.jsx';
 import { classStatus, statusBadgeClass } from '../utils/classStatus.js';
 
 // Mentor is the controller: manages all logins, assigns students to tutors, endorses students, and oversees classes.
 export default function MentorDashboard() {
   const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [attendanceFor, setAttendanceFor] = useState(null); // classId being monitored
 
   useEffect(() => {
-    api.get('/classes').then((r) => setClasses(r.data)).catch(() => {});
+    api.get('/classes').then((r) => setClasses(r.data)).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   const totalLiveMinutes = classes.reduce((sum, c) => sum + classStatus(c).ranMinutes, 0);
@@ -30,28 +33,40 @@ export default function MentorDashboard() {
             Total live time: {totalLiveMinutes} min
           </span>
         </div>
-        {classes.length === 0 && <p className="text-sm text-slate-400">No classes yet.</p>}
+        {loading && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-24 rounded-2xl" />)}
+          </div>
+        )}
+        {!loading && classes.length === 0 && <p className="text-sm text-slate-400">No classes yet.</p>}
         <div className="grid gap-3 sm:grid-cols-2">
           {classes.map((c) => {
             const st = classStatus(c);
             return (
-              <div key={c._id} className="card card-hover !p-4">
+              <button
+                key={c._id}
+                onClick={() => setAttendanceFor(c._id)}
+                className="card card-hover !p-4 text-left"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-slate-900 dark:text-slate-100">{c.title}</p>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadgeClass(st.status)}`}>{st.label}</span>
                 </div>
                 <p className="text-sm text-slate-500">{c.subject} · by {c.tutor?.name}</p>
                 <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
-                  <span>👥 {c.studentCount ?? c.students?.length ?? 0} students</span>
+                  <span>👥 {c.studentCount ?? c.students?.length ?? 0} enrolled</span>
                   <span>👤 {c.attendance?.length ?? 0} attended</span>
+                  <span>⏱️ ran {st.ranMinutes}m</span>
                   <span>📄 {c.documents?.length || 0} docs</span>
-                  {c.schedule && <span>🗓️ {new Date(c.schedule).toLocaleString()}</span>}
                 </div>
-              </div>
+                <p className="mt-2 text-xs font-medium text-brand-600 dark:text-brand-400">View attendance →</p>
+              </button>
             );
           })}
         </div>
       </div>
+
+      <ClassAttendanceModal classId={attendanceFor} onClose={() => setAttendanceFor(null)} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api/axios.js';
 import { classStatus, statusBadgeClass } from '../utils/classStatus.js';
 import { useToast } from '../context/ToastContext.jsx';
+import { safeUrl } from '../utils/url.js';
 
 const dayLabel = (d) => {
   const date = new Date(d);
@@ -46,7 +47,9 @@ export default function ClassCalendar() {
   const join = async (c) => {
     try {
       const { data } = await api.post(`/classes/${c._id}/attendance`);
-      window.open(data.meetingLink || c.meetingLink, '_blank', 'noopener');
+      const link = safeUrl(data.meetingLink || c.meetingLink);
+      if (link) window.open(link, '_blank', 'noopener');
+      else toast.error('This class has no valid meeting link');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not join');
     }

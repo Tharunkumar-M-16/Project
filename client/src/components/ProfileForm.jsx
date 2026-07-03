@@ -12,7 +12,6 @@ export default function ProfileForm() {
     phone: user.phone || '',
     college: user.college || '',
     degree: user.degree || '',
-    targetRole: user.studentProfile?.targetRole || '',
   });
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -66,10 +65,6 @@ export default function ProfileForm() {
           <div>
             <label className="label">Degree</label>
             <input className="input" value={form.degree} onChange={set('degree')} placeholder="e.g. B.Tech CSE" />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="label">Target role (for your ReadyScore)</label>
-            <input className="input" value={form.targetRole} onChange={set('targetRole')} placeholder="e.g. Frontend Developer" />
           </div>
         </div>
         <button className="btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</button>

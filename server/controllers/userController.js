@@ -4,9 +4,7 @@ import Test from '../models/Test.js';
 import Post from '../models/Post.js';
 import Notification from '../models/Notification.js';
 import Message from '../models/Message.js';
-import Role from '../models/Role.js';
 import { notifyUser } from '../services/notify.js';
-import { computeReadyScore } from '../services/readyScore.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const publicFields = 'name username email role avatar phone college degree assignedTutor createdAt studentProfile';
@@ -109,15 +107,29 @@ export const assignTutor = async (req, res) => {
   const student = await User.findById(req.params.id);
   if (!student || student.role !== 'student') return res.status(404).json({ message: 'Student not found' });
 
+  let tutor = null;
   if (tutorId) {
-    const tutor = await User.findById(tutorId);
+    tutor = await User.findById(tutorId);
     if (!tutor || tutor.role !== 'tutor') return res.status(400).json({ message: 'Invalid tutor' });
-    student.assignedTutor = tutor._id;
-    await student.save();
+  }
+
+  const prevTutor = student.assignedTutor;
+  const nextTutor = tutor ? tutor._id : null;
+  const changed = String(prevTutor || '') !== String(nextTutor || '');
+
+  // Leaving a cohort: drop the student from the previous tutor's classes
+  // (enrolment + attendance) so they don't linger in the old roster/counts.
+  if (changed && prevTutor) {
+    await LiveClass.updateMany(
+      { tutor: prevTutor, $or: [{ students: student._id }, { 'attendance.student': student._id }] },
+      { $pull: { students: student._id, attendance: { student: student._id } } }
+    );
+  }
+
+  student.assignedTutor = nextTutor;
+  await student.save();
+  if (changed && tutor) {
     await notifyUser(student._id, `You have been assigned to tutor ${tutor.name}.`, 'account');
-  } else {
-    student.assignedTutor = null;
-    await student.save();
   }
   res.json({ message: 'Tutor updated', assignedTutor: student.assignedTutor });
 };
@@ -138,19 +150,19 @@ export const getUserDetail = async (req, res) => {
   if (!u) return res.status(404).json({ message: 'User not found' });
   const obj = u.toObject();
   if (u.role === 'student') {
-    const [enrolled, subAgg] = await Promise.all([
+    const [enrolled, subAgg, livesAttended] = await Promise.all([
       LiveClass.countDocuments({ students: u._id }),
       Test.aggregate([
         { $unwind: '$submissions' },
         { $match: { 'submissions.student': u._id } },
         { $group: { _id: null, count: { $sum: 1 }, avg: { $avg: '$submissions.percent' } } },
       ]),
+      LiveClass.countDocuments({ 'attendance.student': u._id }),
     ]);
     obj.enrolledCount = enrolled;
     obj.submissionsCount = subAgg[0]?.count || 0;
     obj.avgScore = Math.round(subAgg[0]?.avg || 0);
-    const role = u.studentProfile?.targetRole ? await Role.findOne({ name: u.studentProfile.targetRole }) : null;
-    obj.readyScore = computeReadyScore(u.studentProfile || {}, role);
+    obj.liveClassesAttended = livesAttended;
   }
   res.json(obj);
 };

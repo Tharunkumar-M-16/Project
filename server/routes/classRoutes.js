@@ -6,6 +6,7 @@ import {
   deleteClass,
   enrollClass,
   markAttendance,
+  getClassAttendance,
   addDocument,
   updateDocument,
   deleteDocument,
@@ -16,6 +17,7 @@ const router = express.Router();
 router.get('/', protect, listClasses);
 router.post('/', protect, authorize('tutor', 'admin'), createClass);
 router.get('/:id', protect, getClass);
+router.get('/:id/attendance', protect, authorize('tutor', 'mentor', 'admin'), getClassAttendance);
 router.delete('/:id', protect, authorize('tutor', 'admin'), deleteClass);
 router.post('/:id/enroll', protect, authorize('student'), enrollClass);
 router.post('/:id/attendance', protect, authorize('student'), markAttendance);

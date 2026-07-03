@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// In production (Vercel) we call the Railway backend directly.
+// In production (Netlify) we call the Railway backend directly.
 // In dev, '/api' is proxied to localhost:5000 by vite.config.js.
 const api = axios.create({
   baseURL: import.meta.env.PROD

@@ -16,8 +16,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
-import readyScoreRoutes from './routes/readyScoreRoutes.js';
-import roleRoutes from './routes/roleRoutes.js';
 import classRoutes from './routes/classRoutes.js';
 import postRoutes from './routes/postRoutes.js';
 import testRoutes from './routes/testRoutes.js';
@@ -67,15 +65,23 @@ app.use('/api', apiLimiter);
 app.use('/api/auth/login', authLimiter);
 
 // Uploaded files (post attachments) — served both in dev and production.
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Force a download and disable content-type sniffing so a user-uploaded file
+// can never be executed inline on the app origin (stored-XSS guard).
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, 'uploads'), {
+    setHeaders: (res) => {
+      res.setHeader('Content-Disposition', 'attachment');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+    },
+  })
+);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', service: '5Rings Class API' }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/profile', profileRoutes);
-app.use('/api/readyscore', readyScoreRoutes);
-app.use('/api/roles', roleRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/tests', testRoutes);

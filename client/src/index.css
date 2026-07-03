@@ -124,7 +124,14 @@
 
   /* ---- Tab navigation ---- */
   .tab-list {
-    @apply flex flex-wrap gap-1 border-b border-slate-200 dark:border-slate-800;
+    @apply flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800;
+  }
+  /* Hide the scrollbar on horizontally-scrolling strips (tab bars) */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
   .tab {
     @apply -mb-px inline-flex items-center gap-1.5 rounded-t-lg border-b-2 border-transparent px-4 py-2.5 text-sm font-medium

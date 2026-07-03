@@ -14,17 +14,27 @@ function Row({ label, value }) {
 // Detailed student view for mentor/admin.
 export default function StudentDetailModal({ userId, onClose }) {
   const [u, setU] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!userId) return;
     setU(null);
-    api.get(`/users/${userId}`).then((r) => setU(r.data)).catch(() => {});
+    setError('');
+    api.get(`/users/${userId}`).then((r) => setU(r.data)).catch(() => setError('Could not load this student.'));
   }, [userId]);
 
   return (
     <Modal open={!!userId} onClose={onClose} title="Student details">
-      {!u ? (
-        <p className="py-8 text-center text-sm text-slate-400">Loading…</p>
+      {error ? (
+        <p className="py-8 text-center text-sm text-rose-500">{error}</p>
+      ) : !u ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="skeleton h-12 w-12 rounded-2xl" />
+            <div className="flex-1 space-y-2"><div className="skeleton h-4 w-32" /><div className="skeleton h-3 w-24" /></div>
+          </div>
+          {Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton h-4 w-full" />)}
+        </div>
       ) : (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
@@ -42,17 +52,16 @@ export default function StudentDetailModal({ userId, onClose }) {
             <Row label="Email" value={u.email} />
             <Row label="College" value={u.college} />
             <Row label="Degree" value={u.degree} />
-            <Row label="Target role" value={u.studentProfile?.targetRole} />
             <Row label="Joined" value={u.createdAt && new Date(u.createdAt).toLocaleDateString()} />
           </div>
 
           <div className="grid grid-cols-3 gap-2 text-center">
             {[
-              ['ReadyScore', u.readyScore?.readyScore ?? '—'],
-              ['Avg score', u.avgScore != null ? `${u.avgScore}%` : '—'],
               ['Enrolled', u.enrolledCount ?? 0],
+              ['Lives attended', u.liveClassesAttended ?? 0],
               ['Tests done', u.submissionsCount ?? 0],
-              ['Attendance', `${u.studentProfile?.activeDays || 0}d`],
+              ['Avg score', u.avgScore != null ? `${u.avgScore}%` : '—'],
+              ['Active days', `${u.studentProfile?.activeDays || 0}d`],
               ['Streak', `🔥 ${u.studentProfile?.streak || 0}`],
             ].map(([label, val]) => (
               <div key={label} className="surface rounded-xl p-2.5">
@@ -61,19 +70,6 @@ export default function StudentDetailModal({ userId, onClose }) {
               </div>
             ))}
           </div>
-
-          {u.studentProfile?.skills?.length > 0 && (
-            <div>
-              <p className="label mb-2">Skills</p>
-              <div className="flex flex-wrap gap-2">
-                {u.studentProfile.skills.map((s) => (
-                  <span key={s.name} className={`chip text-xs ${s.verified ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300' : 'surface text-slate-600 dark:text-slate-300'}`}>
-                    {s.name} {s.level}%{s.verified && ' ✓'}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
     </Modal>

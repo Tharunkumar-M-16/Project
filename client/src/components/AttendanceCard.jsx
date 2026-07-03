@@ -3,7 +3,9 @@ import api from '../api/axios.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 
-const iso = (d) => d.toISOString().slice(0, 10);
+// Local calendar day as YYYY-MM-DD (shift by the tz offset so we don't roll
+// over at UTC midnight — must match the date sent to /profile/attendance).
+const iso = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const todayStr = () => iso(new Date());
 
 // Last 14 days as {date, day, present}
@@ -29,7 +31,7 @@ export default function AttendanceCard() {
   const mark = async () => {
     setBusy(true);
     try {
-      const { data } = await api.post('/profile/attendance');
+      const { data } = await api.post('/profile/attendance', { date: todayStr() });
       await refreshUser();
       toast.success(data.alreadyMarked ? 'Already marked today' : `Marked! 🔥 ${data.streak}-day streak`);
     } catch {

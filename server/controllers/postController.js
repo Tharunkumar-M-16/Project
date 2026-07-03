@@ -2,6 +2,7 @@ import Post from '../models/Post.js';
 import Test from '../models/Test.js';
 import { notifyAllStudents } from '../services/notify.js';
 import { forStudent } from './testController.js';
+import { sanitizeLinks } from '../utils/sanitize.js';
 
 // Attach each post's tests (answers hidden for students).
 async function attachTests(posts, user) {
@@ -23,8 +24,8 @@ export const createPost = async (req, res) => {
   const post = await Post.create({
     title,
     body: body || '',
-    links: (links || []).filter((l) => l?.url),
-    documents: (documents || []).filter((d) => d?.title && d?.url),
+    links: sanitizeLinks(links),
+    documents: sanitizeLinks((documents || []).filter((d) => d?.title)),
     tutor: req.user._id,
   });
   await notifyAllStudents(`New post from ${req.user.name}: ${title}`, 'info');
@@ -56,8 +57,8 @@ export const updatePost = async (req, res) => {
   const { title, body, links, documents } = req.body;
   if (title !== undefined) post.title = title;
   if (body !== undefined) post.body = body;
-  if (links !== undefined) post.links = links.filter((l) => l?.url);
-  if (documents !== undefined) post.documents = documents.filter((d) => d?.title && d?.url);
+  if (links !== undefined) post.links = sanitizeLinks(links);
+  if (documents !== undefined) post.documents = sanitizeLinks(documents.filter((d) => d?.title));
   await post.save();
   await notifyAllStudents(`Post updated: ${post.title}`, 'info');
   res.json(post);

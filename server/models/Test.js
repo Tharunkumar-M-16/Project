@@ -31,7 +31,7 @@ const testSchema = new mongoose.Schema(
     classId: { type: mongoose.Schema.Types.ObjectId, ref: 'Class' },
     postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post' },
     tutor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    skill: { type: String, default: '' }, // if set, a good score verifies this skill on the ReadyScore
+    skill: { type: String, default: '' }, // optional topic tag for the test
     dueDate: { type: Date },
     questions: { type: [questionSchema], default: [] },
     submissions: { type: [submissionSchema], default: [] },

@@ -3,6 +3,7 @@ import api from '../../api/axios.js';
 import TestTaker from './TestTaker.jsx';
 import { classStatus, statusBadgeClass } from '../../utils/classStatus.js';
 import { useToast } from '../../context/ToastContext.jsx';
+import { safeUrl } from '../../utils/url.js';
 
 // One enrolled class shown Udemy-style: banner, resources (docs) and lessons (tests).
 function EnrolledClass({ liveClass, onProgress }) {
@@ -19,7 +20,9 @@ function EnrolledClass({ liveClass, onProgress }) {
   const join = async () => {
     try {
       const { data } = await api.post(`/classes/${liveClass._id}/attendance`);
-      window.open(data.meetingLink || liveClass.meetingLink, '_blank', 'noopener');
+      const link = safeUrl(data.meetingLink || liveClass.meetingLink);
+      if (link) window.open(link, '_blank', 'noopener');
+      else toast.error('This class has no valid meeting link');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not join');
     }
@@ -54,9 +57,9 @@ function EnrolledClass({ liveClass, onProgress }) {
             <p className="text-sm text-slate-400">No documents yet.</p>
           )}
           <ul className="space-y-1">
-            {liveClass.documents?.map((d) => (
+            {liveClass.documents?.filter((d) => safeUrl(d.url)).map((d) => (
               <li key={d._id || d.url}>
-                <a href={d.url} target="_blank" rel="noreferrer"
+                <a href={safeUrl(d.url)} target="_blank" rel="noreferrer"
                   className="flex items-center gap-2 rounded-xl px-2 py-1 text-sm text-slate-700 transition hover:bg-slate-50 hover:text-brand-600 dark:text-slate-300 dark:hover:bg-slate-800">
                   📄 {d.title}
                 </a>
@@ -127,7 +130,13 @@ export default function StudentClasses({ compact = false }) {
   const myIds = new Set(mine.map((c) => c._id));
   const browsable = all.filter((c) => !myIds.has(c._id));
 
-  if (loading) return <div className="card text-center text-slate-400">Loading your classes…</div>;
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 2 }).map((_, i) => <div key={i} className="skeleton h-36 rounded-2xl" />)}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

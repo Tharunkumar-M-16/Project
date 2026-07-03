@@ -4,6 +4,7 @@ import ClassManager from './ClassManager.jsx';
 import PostManager from './PostManager.jsx';
 import UserManager from '../../components/UserManager.jsx';
 import Messages from '../../components/Messages.jsx';
+import Tabs from '../../components/Tabs.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 
 export default function TutorDashboard() {
@@ -36,28 +37,21 @@ export default function TutorDashboard() {
   };
 
   const tabs = [
-    ['classes', '🎥 Live classes'],
-    ['posts', '📢 Posts'],
-    ['students', '👥 My students'],
-    ['messages', '💬 Messages'],
+    { key: 'classes', icon: '🎥', label: 'Classes' },
+    { key: 'posts', icon: '📢', label: 'Posts' },
+    { key: 'students', icon: '👥', label: 'Students' },
+    { key: 'messages', icon: '💬', label: 'Messages' },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 sm:pb-0">
       <div className="hero bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600">
         <p className="text-sm font-medium uppercase tracking-wider text-white/70">Tutor workspace</p>
         <h1 className="mt-1 text-2xl font-bold sm:text-3xl">Tutor dashboard</h1>
         <p className="mt-1 max-w-xl text-white/85">Run live classes, publish posts, assign tests, and support your students.</p>
       </div>
 
-      <div className="tab-list">
-        {tabs.map(([key, label]) => (
-          <button key={key} onClick={() => setTab(key)}
-            className={`tab ${tab === key ? 'tab-active' : ''}`}>
-            {label}
-          </button>
-        ))}
-      </div>
+      <Tabs tabs={tabs} value={tab} onChange={setTab} />
 
       {tab === 'posts' && <PostManager />}
       {tab === 'messages' && <Messages />}

@@ -13,6 +13,13 @@ const ALLOWED = new Set([
   'text/plain', 'application/zip',
 ]);
 
+// The browser-supplied mimetype is spoofable, so also require a known-safe
+// extension. This blocks e.g. an .html file smuggled in with a text/plain type.
+const ALLOWED_EXT = new Set([
+  '.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp',
+  '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.txt', '.zip',
+]);
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
@@ -29,7 +36,8 @@ export const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
   fileFilter: (req, file, cb) => {
-    if (ALLOWED.has(file.mimetype)) return cb(null, true);
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ALLOWED.has(file.mimetype) && ALLOWED_EXT.has(ext)) return cb(null, true);
     cb(Object.assign(new Error('Unsupported file type'), { status: 400 }));
   },
 });

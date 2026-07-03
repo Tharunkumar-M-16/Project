@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import ChangePasswordModal from './ChangePasswordModal.jsx';
+import NotificationBell from './NotificationBell.jsx';
 
 const roleBadge = {
   student: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300',
@@ -26,13 +27,11 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/70 backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-950/70">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-        <Link to="/dashboard" className="group flex items-center gap-2.5 font-display font-bold text-slate-900 dark:text-slate-100">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-indigo-600 text-lg font-extrabold text-white shadow-glow transition-transform group-hover:scale-105">
-            5
+        <Link to="/dashboard" className="group flex items-center gap-2.5">
+          <span className="flex h-9 items-center rounded-xl bg-white px-2.5 shadow-card ring-1 ring-slate-200/80 transition-transform group-hover:scale-105 dark:ring-slate-700">
+            <img src="/logo-wordmark.png" alt="5Rings" className="h-4 w-auto" />
           </span>
-          <span className="text-lg tracking-tight">
-            5Rings <span className="font-medium text-slate-400 dark:text-slate-500">Class</span>
-          </span>
+          <span className="font-display text-lg font-bold tracking-tight text-slate-500 dark:text-slate-400">Class</span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-3">
           <button
@@ -44,7 +43,8 @@ export default function Navbar() {
           </button>
           {user && (
             <>
-              <span className={`chip capitalize ${roleBadge[user.role]}`}>{user.role}</span>
+              <NotificationBell />
+              <span className={`hidden capitalize sm:inline-flex chip ${roleBadge[user.role]}`}>{user.role}</span>
               <div className="relative">
                 <button
                   onClick={() => setMenu((v) => !v)}

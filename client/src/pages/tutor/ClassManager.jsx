@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../../api/axios.js';
 import CreateTestForm from './CreateTestForm.jsx';
 import Modal from '../../components/Modal.jsx';
+import ClassAttendanceModal from '../../components/ClassAttendanceModal.jsx';
 import { classStatus, statusBadgeClass } from '../../utils/classStatus.js';
 import { useToast } from '../../context/ToastContext.jsx';
 
@@ -47,6 +48,7 @@ export default function ClassManager({ liveClass, onDeleted }) {
   const [editingTest, setEditingTest] = useState(null);
   const [subs, setSubs] = useState({});
   const [confirmDel, setConfirmDel] = useState(false);
+  const [showAttendance, setShowAttendance] = useState(false);
 
   const st = classStatus(liveClass);
 
@@ -93,7 +95,8 @@ export default function ClassManager({ liveClass, onDeleted }) {
             {st.status === 'ended' && ` · ran ${st.ranMinutes} min`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => setShowAttendance(true)} className="btn-secondary btn-sm">👤 Attendance</button>
           {st.status === 'live' && (
             <a href={liveClass.meetingLink} target="_blank" rel="noreferrer" className="btn-primary btn-sm">▶ Start live class</a>
           )}
@@ -144,7 +147,7 @@ export default function ClassManager({ liveClass, onDeleted }) {
                   <div>
                     <p className="font-medium text-slate-800 dark:text-slate-100">{t.title}</p>
                     <p className="text-xs text-slate-500">
-                      {t.questions.length} questions{t.skill && ` · verifies "${t.skill}"`} · {t.submissions?.length || 0} submissions
+                      {t.questions.length} questions{t.skill && ` · ${t.skill}`} · {t.submissions?.length || 0} submissions
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -170,6 +173,8 @@ export default function ClassManager({ liveClass, onDeleted }) {
           ))}
         </div>
       </div>
+
+      <ClassAttendanceModal classId={showAttendance ? liveClass._id : null} onClose={() => setShowAttendance(false)} />
 
       <Modal open={confirmDel} onClose={() => setConfirmDel(false)} title="Delete class">
         <p className="text-sm text-slate-600 dark:text-slate-300">Delete "{liveClass.title}"? This removes its tests too.</p>

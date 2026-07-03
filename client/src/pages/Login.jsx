@@ -30,8 +30,8 @@ export default function Login({ staff = false }) {
     <div className="grid min-h-screen place-items-center px-4 py-10">
       <div className="w-full max-w-md animate-fade-up">
         <div className="mb-7 text-center">
-          <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-indigo-600 text-2xl font-extrabold text-white shadow-glow">
-            5
+          <div className="mx-auto mb-4 w-fit rounded-2xl bg-white px-5 py-3.5 shadow-lift ring-1 ring-slate-200 dark:ring-slate-700">
+            <img src="/logo-wordmark.png" alt="5Rings" className="h-8 w-auto" />
           </div>
           <h1 className="font-display text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             {staff ? 'Staff sign in' : 'Welcome back'}
